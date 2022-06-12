@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunklongyu_website=self.webpackChunklongyu_website||[]).push([[9700],{5688:function(e){e.exports=JSON.parse('{"label":"hola","permalink":"/blog/tags/hola","allTagsPath":"/blog/tags","count":1}')}}]);
