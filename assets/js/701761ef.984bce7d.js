@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunklongyu_website=self.webpackChunklongyu_website||[]).push([[2661],{2301:function(l){l.exports=JSON.parse('{"label":"hola","permalink":"/longyu.github.io/blog/tags/hola","allTagsPath":"/longyu.github.io/blog/tags","count":1}')}}]);

@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunklongyu_website=self.webpackChunklongyu_website||[]).push([[3421],{2727:function(u){u.exports=JSON.parse('{"label":"docusaurus","permalink":"/longyu.github.io/blog/tags/docusaurus","allTagsPath":"/longyu.github.io/blog/tags","count":4}')}}]);
