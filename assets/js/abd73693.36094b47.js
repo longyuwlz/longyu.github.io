@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunklongyu_website=self.webpackChunklongyu_website||[]).push([[6506],{4607:function(l){l.exports=JSON.parse('[{"label":"\u6587\u8d4b","permalink":"/longyu.github.io/blog/tags/\u6587\u8d4b","count":1},{"label":"blog","permalink":"/longyu.github.io/blog/tags/blog","count":1}]')}}]);

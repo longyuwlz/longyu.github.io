@@ -9,15 +9,6 @@
         <generator>https://github.com/jpmonette/feed</generator>
         <language>zh-Hans</language>
         <item>
-            <title><![CDATA[龙瑜文赋]]></title>
-            <link>https://longyuwlz.github.io/longyu.github.io/blog/2022-6.17-龙瑜文赋</link>
-            <guid>/2022-6.17-龙瑜文赋</guid>
-            <pubDate>Sun, 19 Jun 2022 07:40:00 GMT</pubDate>
-            <description><![CDATA[潇洒不拘一格，文笔清新自然，]]></description>
-            <content:encoded><![CDATA[<p>潇洒不拘一格，文笔清新自然，</p><p>不可谓之淡雅，且先不入俗文列。</p><p>去之应有得；</p><p>作之应有感；</p><p>伤之应有真情。</p><p>又见古今中外——豪放不羁者，走马荒郊。</p><p>不喜天变；不忧人悲；不叹宿命;</p><p>只一自由容纳灵魂！</p><p>论之不以凡文，评之不以贱词。</p><p>文学创者，不拘于时；寂寞藏心，字字显真情；</p><p>奢华才繁皆是赘，抒我心志成美文；</p><p>不拘形来不拘辞，飘扬黯立守怀臆。</p><p>不问是非曲折，不求明心正意，只愿静一菩心。</p><p>成大树，做真人！</p><p>行于大道处；</p><p>做于大道中；</p><p>成于大道上。</p><p>驾驭一切可用之材迹，穷尽无限之才思。</p><p>怀一腔热血，撒一抔黄土。</p><p>茫茫归路，惟愿止境尚无！</p>]]></content:encoded>
-            <category>文赋</category>
-        </item>
-        <item>
             <title><![CDATA[dpdk/dpdk-kni与ethtool试玩问题记录]]></title>
             <link>https://longyuwlz.github.io/longyu.github.io/blog/dpdk/dpdk-kni与ethtool试玩问题记录</link>
             <guid>/dpdk/dpdk-kni与ethtool试玩问题记录</guid>
