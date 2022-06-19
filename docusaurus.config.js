@@ -53,7 +53,7 @@ const config = {
     // If you aren't using GitHub pages, you don't need these.
     organizationName: 'longyuwlz', // Usually your GitHub org/user name.
     projectName: 'longyu.github.io', // Usually your repo name.
-    deploymentBranch: 'gh_pages', // set default deployment branch
+    deploymentBranch: 'gh-pages', // set default deployment branch
 
     // Even if you don't use internalization, you can use this field to set useful
     // metadata like html lang. For example, if your site is Chinese, you may want
