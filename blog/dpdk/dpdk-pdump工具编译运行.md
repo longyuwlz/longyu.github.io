@@ -13,7 +13,8 @@
 ## 使用 dpdk-pdump 
 **dpdk-pdump 的用法如下：**
 
-**usage: ./dpdk-pdump [EAL options] -- --pdump '(port=<port id> | device_id=<pci id or vdev name>),(queue=<queue_id>),(rx-dev=<iface or pcap file> | tx-dev=<iface or pcap file>,[ring-size=<ring size>default:16384],[mbuf-size=<mbuf data size>default:2176],[total-num-mbufs=<number of mbufs>default:65535]' [--server-socket-path=<server socket dir>default:/var/run/.dpdk/ (or) ~/.dpdk/] [--client-socket-path=<client socket dir>default:/var/run/.dpdk/ (or) ~/.dpdk/]**
+```bash
+usage: ./dpdk-pdump [EAL options] -- --pdump '(port=<port id> | device_id=<pci id or vdev name>),(queue=<queue_id>),(rx-dev=<iface or pcap file> | tx-dev=<iface or pcap file>,[ring-size=<ring size>default:16384],[mbuf-size=<mbuf data size>default:2176],[total-num-mbufs=<number of mbufs>default:65535]' [--server-socket-path=<server socket dir>default:/var/run/.dpdk/ (or) ~/.dpdk/] [--client-socket-path=<client socket dir>default:/var/run/.dpdk/ (or) ~/.dpdk/]```
 
 **dpdk-pdump** 需要依赖一个 **dpdk primary** 进程，我就以 **l2fwd** 命令作为 **dpdk primary** 进程。
 
