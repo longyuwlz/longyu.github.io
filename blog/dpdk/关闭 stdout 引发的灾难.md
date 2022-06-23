@@ -1,3 +1,4 @@
+# 关闭 stdout 引发的灾难
 ## 问题描述
 2021 年前的 dpdk 版本中默认的 log 为 **stdout**，在实际使用中发现在**调用 rte_eal_init 之前关闭 stdout 时**，dpdk 程序**运行异常**。
 

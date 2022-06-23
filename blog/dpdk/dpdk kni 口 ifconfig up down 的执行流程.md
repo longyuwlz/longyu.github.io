@@ -1,3 +1,4 @@
+# dpdk kni 口 ifconfig up down 的执行流程
 ## 问题描述
 用户执行 ifconfig netcard down、up 时 rte_kni 模块中的哪部分起作用？
 

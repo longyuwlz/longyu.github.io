@@ -1,3 +1,4 @@
+# x710 hash 分片与非分片 tcp 报文异常问题
 ## 问题描述
 当 rss_hf 中配置了 **ETH_RSS_FRAG_IPV4** 与 **ETH_RSS_NONFRAG_IPV4_TCP** 参数后，一些连接的分片报文会被 hash 到其它队列中，**由于这些分片的报文没有 L4 port number**。
 

@@ -1,3 +1,4 @@
+# dpdk程序启动顺序引发的血案
 ## 问题描述
 在某个特定的场景中，**dpdk primary** 进程在宿主机上运行，在 **dpdk primary** 进程运行前，宿主机上的**某 A 程序**负责创建 **/dev/hugepages** 目录并挂载 **hugetlbfs** 到此目录中。
 

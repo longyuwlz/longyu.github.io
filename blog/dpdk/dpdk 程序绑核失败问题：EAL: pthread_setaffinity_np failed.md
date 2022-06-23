@@ -1,3 +1,4 @@
+# dpdk 程序绑核失败问题：EAL: pthread_setaffinity_np failed
 # 问题描述
 
 在某系统中，运行原生 dpdk 示例程序会报如下错误：

@@ -1,3 +1,4 @@
+# 设置 EXTRA_CFLAGS 以编译 debug 版本 dpdk 库
 ## 命令行指定 CFLAGS 不生效
 dpdk 的 Makefile 中有对 CFLAGS 的设定，在很多 Makefile 单独设定了 CFLAGS 增加 -O3 参数。
 

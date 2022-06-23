@@ -1,3 +1,4 @@
+# 以 rte_mempool_ops_table 为例描述 dpdk 程序库链接顺序对程序执行的影响
 # dpdk mempool_ops
 dpdk mempool_ops 是对旧版 mempool 代码的抽象，在 **dpdk-16.07** 中被引入。
 

@@ -1,3 +1,4 @@
+# dpdk-16.04 igb crc length 统计问题
 ## 问题描述
 
 i350 igb 电口，调用 dpdk rte_eth_stats_get 获取到的接口发包字节统计，每个包少了 crc len 长度，导致根据此统计计算的 bps 不准确。

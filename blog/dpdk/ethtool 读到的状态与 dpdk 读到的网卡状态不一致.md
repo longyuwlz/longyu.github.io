@@ -1,3 +1,4 @@
+# ethtool 读到的状态与 dpdk 读到的网卡状态不一致
 ## ethtool 读到的链接状态
 
 使用 ethtool 读取网卡链接状态的一个示例如下：

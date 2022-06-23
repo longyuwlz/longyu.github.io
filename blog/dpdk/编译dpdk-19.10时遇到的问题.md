@@ -1,3 +1,4 @@
+# 编译dpdk-19.10时遇到的问题
 ## 未安装 numa 库的问题
 ```make
 /home/longyu/dpdk-19.08/lib/librte_eal/linux/eal/eal_memory.c:32:10: fatal error: numa.h: No such file or directory

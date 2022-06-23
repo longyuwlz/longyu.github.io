@@ -1,3 +1,4 @@
+# dpdk 中 rte_config.h 配置文件生成的问题
 ## 为什么要生成 rte_config.h 头文件
 dpdk 有单独的一套 config 配置文件，在 RTE_TARGET 变量指定的目标目录下需要生成一个 .config 文件，这个 .config 文件用来配置 dpdk 中不同组件的功能。
 
