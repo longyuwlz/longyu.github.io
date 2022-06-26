@@ -1,0 +1,445 @@
+# pciutils 功能及其实现分析
+## 1. pciutils 的功能及常用命令
+pciutils 包含一个用与访问 pci 总线配置寄存器的可移植库及基于这个库开发的几个实用程序。
+
+pciutils 支持的平台及不同平台上访问 pci bus 的方法列表如下：
+
+ 支持的平台     | 访问 pci bus 的方法
+|:--------:|:-----|
+Linux | via /sys/bus/pci, /proc/bus/pci or i386 ports
+FreeBSD | via /dev/pci
+NetBSD | via libpci
+OpenBSD | via /dev/pci
+GNU/kFreeBSD | via /dev/pci
+Solaris/i386 | direct port access
+Aix | via /dev/pci and odmget
+GNU Hurd | direct port access
+Windows | direct port access, see README.Windows for caveats
+CYGWIN | direct port access
+BeOS | via syscalls
+Haiku | via /dev/misc/poke
+Darwin | via IOKit
+
+从上述表格可以看出，pciutils 支持的平台是非常多的，且这些不同平台访问 pci bus 总线的方法也有所区别，pciutils 完全兼容了这些平台，具有很好的可移植性，这是后面描述 pciutils 原理时，要重点分析的内容！
+
+pciutils 支持如下几个实用程序：
+1. lspci -- 显示所有 pci 总线与设备的详细信息
+2. setpci -- 允许用户从 pci 配置空间寄存器读取与写入数据
+3. update-pciids -- 从网络上下载 pci.ids 文件的当前版本
+4. pcimodules -- 列出当前系统上所有插入的 pci 设备可用的内核驱动
+
+## 2. pciutils 编译使用
+编译环境：debian10
+gcc 版本：gcc version 8.3.0 (Debian 8.3.0-6)
+pciutils 版本：pciutils-3.5.2
+
+pciutils 源码通过执行如下命令获取：
+
+```bash
+sudo apt-get source pciutils
+```
+执行后进入 pciutils-3.5.2 源码目录中，执行 sudo make 命令，发现 lspci 程序链接的时候有如下报错信息：
+
+```bash
+gcc   lspci.o ls-vpd.o ls-caps.o ls-caps-vendor.o ls-ecaps.o ls-kernel.o ls-tree.o ls-map.o common.o lib/libpci.a  -lz -lresolv -ludev  -o lspci
+/usr/bin/ld: lspci.o: in function `config_fetch':
+/tmp/pciutils-3.5.2/lspci.c:104: undefined reference to `pci_read_block'
+/usr/bin/ld: lspci.o: in function `scan_device':
+/tmp/pciutils-3.5.2/lspci.c:117: undefined reference to `pci_filter_match'
+/usr/bin/ld: /tmp/pciutils-3.5.2/lspci.c:126: undefined reference to `pci_read_block'
+/usr/bin/ld: /tmp/pciutils-3.5.2/lspci.c:140: undefined reference to `pci_setup_cache'
+/usr/bin/ld: /tmp/pciutils-3.5.2/lspci.c:141: undefined reference to `pci_fill_info'
+..........
+```
+报错信息表明 pci_xxx 这些函数未定义，nm 查看 lib/libpci.a 文件相关的函数定义信息如下：
+
+```bash
+0000000000003030 t pci_fill_info
+0000000000002fd0 t pci_fill_info_v35
+0000000000002e00 t pci_read_block
+0000000000002ca0 t pci_read_byte
+0000000000002d80 t pci_read_long
+0000000000002e10 t pci_read_vpd
+0000000000002cf0 t pci_read_word
+0000000000003040 t pci_setup_cache
+```
+第二列为 t 表明函数有定义，印象中还有个大写的 T 类型，man nm 发现 T/t 类型解释一致。
+
+这里 lspci 程序编译时将 lib/libpci.a 放到了相对靠后的位置，保证了在链接的时候能够找到相应的符号，**那为啥还报符号未定义呢？**
+
+为了解决此问题进行了如下尝试：
+
+1. 编译 lspci 程序时改为使用 lib 下的 .o，每添加一个 .o 观察报错，发现随着 .o 文件的加入未定义问题逐渐消失。
+2. 进入到 lib 子目录中，执行 ar -r libpci-test.a *.o 手动生成 libpci-test.a 文件，使用这个文件链接，链接成功。
+3. 查看 README 文件，执行 make clean 后，执行 make SHARED=yes，能够成功编译。
+
+重新 clean 后执行 make 命令，查看 libpci.a 编译过程，获取到如下信息：
+
+```bash
+.............
+gcc -O2 -g -Wall -W -Wno-parentheses -Wstrict-prototypes -Wmissing-prototypes -fPIC -fvisibility=hidden   -c -o names-cache.o names-cache.c
+gcc -O2 -g -Wall -W -Wno-parentheses -Wstrict-prototypes -Wmissing-prototypes -fPIC -fvisibility=hidden   -c -o names-hwdb.o names-hwdb.c
+gcc -O2 -g -Wall -W -Wno-parentheses -Wstrict-prototypes -Wmissing-prototypes -fPIC -fvisibility=hidden   -c -o params.o params.c
+gcc -O2 -g -Wall -W -Wno-parentheses -Wstrict-prototypes -Wmissing-prototypes -fPIC -fvisibility=hidden   -c -o caps.o caps.c
+gcc -O2 -g -Wall -W -Wno-parentheses -Wstrict-prototypes -Wmissing-prototypes -fPIC -fvisibility=hidden   -c -o sysfs.o sysfs.c
+gcc -O2 -g -Wall -W -Wno-parentheses -Wstrict-prototypes -Wmissing-prototypes -fPIC -fvisibility=hidden   -c -o proc.o proc.c
+gcc -O2 -g -Wall -W -Wno-parentheses -Wstrict-prototypes -Wmissing-prototypes -fPIC -fvisibility=hidden   -c -o i386-ports.o i386-ports.c
+gcc -shared   -Wl,--version-script=libpci.ver -o libpci.a init.o access.o generic.o dump.o names.o filter.o names-hash.o names-parse.o names-net.o names-cache.o names-hwdb.o params.o caps.o sysfs.o proc.o i386-ports.o 
+```
+可以发现编译 libpci.a 时，命令行中有 ```-fvisibility=hidden```参数，修改 lib/Makefile 文件，去掉这个编译参数后，重新 clean 后编译，这次成功了。
+
+## 真正的问题是啥？
+网上搜索 ```-fvisibility=hidden```参数，发现这个参数设定后，编译对象中的所有未通过 ```__attribute__((visibility("default")))```修饰的符号都会被隐藏为本地符号，作用范围仅在当前对象中，无法被其它外部对象引用。也可以指定链接参数使用 version-script 来完成这一功能。
+
+nm 看到 libpci.a 中 pci_xx 的符号类型都是 t 表示这些符号都是本地符号，T 类型的符号是全局符号，可以被其它对象引用。
+
+lib/Makefile 文件中相关代码贴到这里：
+
+```c
+#ifeq ($(SHARED),no)
+$(PCILIBA): $(addsuffix .o,$(OBJS))
+	rm -f $@
+	$(AR) rcs $@ $^
+	$(RANLIB) $@
+#else
+CFLAGS += -fPIC -fvisibility=hidden
+$(PCILIB): $(addsuffix .o,$(OBJS))
+ ifdef PCI_HAVE_PM_DARWIN_DEVICE
+	$(CC) -shared $(LDFLAGS) $(SONAME) -Wl,-install_name,$(LIBDIR)/$(PCILIB) -o $@ $^ $(LIB_LDLIBS)
+ else
+	$(CC) -shared $(LDFLAGS) $(SONAME) -Wl,--version-script=libpci.ver -o $@ $^ $(LIB_LDLIBS)
+ endif
+#endif
+```
+SHARED 未设定时默认值为 no，按照上面的逻辑，应该不会设定 ```-fvisibility=hidden```标志，可执行过程明确表示，使用的是 else 中的代码。
+
+make 编译时有如下警告信息：
+
+```bash
+Makefile:66: warning: overriding recipe for target 'libpci.a'
+Makefile:57: warning: ignoring old recipe for target 'libpci.a'
+```
+57 行是 SHARED 为 no 的代码，66 行是 SHARED 不为 no 的代码，报错信息表明 57 行指定的 libpci.a 目标的编译语句被 66 行指定的相同目标编译语句覆盖。
+
+从 [Appendix B Errors Generated by Make](https://www.gnu.org/software/make/manual/html_node/Error-Messages.html) 上找到如下信息：
+
+```bash
+‘warning: overriding recipe for target `xxx'’
+‘warning: ignoring old recipe for target `xxx'’
+
+    GNU make allows only one recipe to be specified per target (except for double-colon rules). If you give a recipe for a target which already has been defined to have one, this warning is issued and the second recipe will overwrite the first. See Multiple Rules for One Target.
+```
+当描述了同一个编译目标的两个编译过程时，第二个编译过程将会覆盖第一个并打印 **overriding recipe for target `xxx'** 这种警告信息。
+
+进一步确认发现 debian10 仓库库中维护的 pciutils 源码下载后会打上内部补丁，与 lib/Makefile 相关的补丁内容如下：
+
+```patch
+===================================================================
+--- pciutils-3.5.2.orig/lib/Makefile
++++ pciutils-3.5.2/lib/Makefile
+@@ -47,13 +47,16 @@ OBJS += darwin
+ endif
+ 
+ all: $(PCILIB) $(PCILIBPC)
++PCILIBA=libpci.a
+ 
+-ifeq ($(SHARED),no)
+-$(PCILIB): $(addsuffix .o,$(OBJS))
++all: $(PCILIB) $(PCILIBA) $(PCILIBPC)
++
++#ifeq ($(SHARED),no)
++$(PCILIBA): $(addsuffix .o,$(OBJS))
+ 	rm -f $@
+ 	$(AR) rcs $@ $^
+ 	$(RANLIB) $@
+-else
++#else
+ CFLAGS += -fPIC -fvisibility=hidden
+ $(PCILIB): $(addsuffix .o,$(OBJS))
+  ifdef PCI_HAVE_PM_DARWIN_DEVICE
+@@ -61,7 +64,7 @@ $(PCILIB): $(addsuffix .o,$(OBJS))
+  else
+ 	$(CC) -shared $(LDFLAGS) $(SONAME) -Wl,--version-script=libpci.ver -o $@ $^ $(LIB_LDLIBS)
+  endif
+-endif
++#endif
+```
+测试直接编译未打这个补丁的版本，能够成功编译，问题确定为 debian10 的这个补丁中添加的 PCILIBA 与 PCILIB 目标是同一个目标，编译方法却不同，故而覆盖了老方法，debian10 中 pciutils 的编译命令行在 rules 文件中指定，内容如下：
+
+```Makefile
+ 32 build:
+ 33     dh_testdir
+ 34     OPT="$(CFLAGS)" $(MAKE) $(CROSS) $(PATHS) SHARED=yes $(LINUX_FEATURES)
+```
+可以看到它设定了 SHARED=yes，会将 libpci 编译为动态库，这种方式是没有问题滴！
+# 3. pciutils example 程序编译执行
+pciutils 根目录中放了一个 example 程序，此程序代码非常少，却与 lspci、setpci 等工具的流程完全一致，在进一步分析 pciutils 内部原理前我们先看看这个库要怎么使用。
+
+执行 example 的部分输出信息如下：
+
+```bash
+[longyu@debian-10:15:50:16] pciutils-3.5.2 $ ./example 
+0000:00:1f.4 vendor=8086 device=9da3 class=0c05 irq=16 (pin 1) base0=400010c004 (Cannon Point-LP SMBus Controller)
+0000:00:14.0 vendor=8086 device=9ded class=0c03 irq=126 (pin 1) base0=c1200004 (Cannon Point-LP USB 3.1 xHCI Controller)
+0000:00:02.0 vendor=8086 device=3ea0 class=0300 irq=129 (pin 1) base0=c0000004 (UHD Graphics 620 (Whiskey Lake))
+0000:00:14.2 vendor=8086 device=9def class=0500 irq=0 (pin 0) base0=c1216004 (Cannon Point-LP Shared SRAM)
+.........
+```
+example 输出了系统上每一个 pci 设备的信息诸如 pci 号、vendor id、device id、class、irq 号、基地址等等信息，部分信息在 lspci 命令的输出中也能够看到。
+
+example 程序代码如下：
+
+```c
+/*
+ *	The PCI Library -- Example of use (simplistic lister of PCI devices)
+ *
+ *	Written by Martin Mares and put to public domain. You can do
+ *	with it anything you want, but I don't give you any warranty.
+ */
+
+#include <stdio.h>
+
+#include "lib/pci.h"
+
+int main(void)
+{
+  struct pci_access *pacc;
+  struct pci_dev *dev;
+  unsigned int c;
+  char namebuf[1024], *name;
+
+  pacc = pci_alloc();		/* Get the pci_access structure */
+  /* Set all options you want -- here we stick with the defaults */
+  pci_init(pacc);		/* Initialize the PCI library */
+  pci_scan_bus(pacc);		/* We want to get the list of devices */
+  for (dev=pacc->devices; dev; dev=dev->next)	/* Iterate over all devices */
+    {
+      pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_CLASS);	/* Fill in header info we need */
+      c = pci_read_byte(dev, PCI_INTERRUPT_PIN);				/* Read config register directly */
+      printf("%04x:%02x:%02x.%d vendor=%04x device=%04x class=%04x irq=%d (pin %d) base0=%lx",
+	     dev->domain, dev->bus, dev->dev, dev->func, dev->vendor_id, dev->device_id,
+	     dev->device_class, dev->irq, c, (long) dev->base_addr[0]);
+
+      /* Look up and print the full name of the device */
+      name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
+      printf(" (%s)\n", name);
+    }
+  pci_cleanup(pacc);		/* Close everything */
+  return 0;
+}
+```
+代码量非常少，主要过程如下：
+
+1. 执行 pci_alloc 初始化 pci_access 结构
+2. 执行 pci_init 初始化 pci 库
+3. 执行 pci_scan_bus 扫描 pci 设备
+4. 遍历 pci_access 结构中的 pci 设备列表，调用 libpci 库提供的获取 pci 设备信息的函数获取信息，然后输出
+
+以上几个步骤都是通过调用 libpci 库提供的函数完成的，可以看出 libpci 库的接口是非常简单的，这大大简化了基于这个库开发的程序的复杂性，是一个很好的库实例。
+
+## 4. libpci 库的实现原理
+libpci 库实现的主要需求如下：
+
+1.提供 pci 设备信息访问与查询的接口
+2. 实现一套接口兼容多种平台
+
+第一章中已经提到 pciutils 具有很好的可移植性，支持多种不同的平台。pci 总线及设备是标准化的，不存在平台的差异性，用以描述这些 pci 设备的结构是平台独立的，但是不同的平台上扫描、获取 pci 设备信息的方法是不一致的。
+
+要实现统一接口，需要增加一个适配层，将不同平台获取 pci 设备的不同方法的变化封装到这一适配层中，pciutils 内部抽象出了 pci_methods 结构体，此结构体封装了不同平台 pci 方法，pci 上层接口通过调用 pci_methods 中的不同方法来与底层不同平台上的接口交互，达成了上层接口统一的目的。
+
+pci_methods 结构体定义如下：
+```c
+struct pci_methods {
+  char *name;
+  char *help;
+  void (*config)(struct pci_access *);
+  int (*detect)(struct pci_access *);
+  void (*init)(struct pci_access *);
+  void (*cleanup)(struct pci_access *);
+  void (*scan)(struct pci_access *);
+  int (*fill_info)(struct pci_dev *, int flags);
+  int (*read)(struct pci_dev *, int pos, byte *buf, int len);
+  int (*write)(struct pci_dev *, int pos, byte *buf, int len);
+  int (*read_vpd)(struct pci_dev *, int pos, byte *buf, int len);
+  void (*init_dev)(struct pci_dev *);
+  void (*cleanup_dev)(struct pci_dev *);
+};
+```
+如果将上面这个结构体看做是一个类的方法，根据 c 语言实现面向对象的思路看，虚函数中的第一个参数为指向对象的指针，这个结构体的方法可以归属到两类对象中。
+
+1. pci_access 对象
+2. pci_dev 对象
+
+pci_access 对象负责描述当前系统上 pci 访问方法，并参与 pci 扫描过程，pci_dev 则负责描述每个 pci 设备，也将每个 pci 设备绑定到对应的 pci 信息访问接口上，pciutils 正是通过这两个结构的组合实现的。
+
+## 不同平台 pci_methods 方法的注册过程
+上文提到 pciutils 通过 pci_methods 结构抽象底层不同平台 pci 设备操作方法接口，既然 pciutils 支持多个平台，相应的 pci_methods 结构也有多份不同的实例，**不同的平台上 pci_methods 实例化方法其注册过程是怎样的呢**？
+
+pciutils 内部定义了一个 pci_methods 结构的指针数组，也叫 pci_methods，每一个平台实例化的 pci_methods 结构的指针占据 pci_methods 数组的一个表项，同时通过宏来控制是否加入特定的平台。
+
+相关信息如下：
+
+```c
+static struct pci_methods *pci_methods[PCI_ACCESS_MAX] = {
+  NULL,
+#ifdef PCI_HAVE_PM_LINUX_SYSFS
+  &pm_linux_sysfs,
+#else
+  NULL,
+#endif
+#ifdef PCI_HAVE_PM_LINUX_PROC
+  &pm_linux_proc,
+#else
+  NULL,
+#endif
+#ifdef PCI_HAVE_PM_INTEL_CONF
+  &pm_intel_conf1,
+  &pm_intel_conf2,
+#else
+```
+每一个项目都通过宏来控制，当未定义相关的宏时，表项为 NULL。这些宏通过 lib/configure 生成 lib/config.h 来生成定义，生成后包含这个头文件就在编译时将当前平台支持的 pci_methods 方法注册到了 pci_methods 数组中。
+
+既然已经明确了每个平台 pci_methods 方法注册的过程，下一步需要确定的就是当前平台如何获取到相应的 pci_methods 方法。
+
+pci_methods 结构中的 config 与 detect 方法共同承担了这一任务，其主要过程如下：
+
+1. 在 pci_alloc 函数中创建一个 pci_access 结构，然后遍历 pci_methods 数组中的每一个 pci_methods 实例化方法，调用 config 虚函数注册一个标识性的参数。
+2. 在 pci_init 函数中遍历 pci_methods 数组中的每一个表项，调用 detect 虚函数获取 config 虚函数中注册的参数并根据获取到的值判断当前系统是否支持，支持则返回 0。
+3. 获取到第一个支持的 pci_methods 方法则填充到 pci_alloc 中创建的 pci_access 结构中的 methods 变量，并将此方法在 pci_methods 数组中的小标保存到 pci_access 的 method 变量中，并调用 pci_methods 方法的初始化函数，这就完成了获取当前系统支持的 pci_methods 方法的任务。
+
+## pci 设备扫描过程
+获取到当前平台支持的 pci_methods 并注册到 pci_access 结构后，就开始扫描 pci 设备，上层函数为 pci_scan_bus，其源码如下：
+
+```c
+void
+pci_scan_bus(struct pci_access *a)
+{
+  a->methods->scan(a);
+}
+```
+此函数直接调用当前 pci_access 结构中的 pci_methods 方法中的 scan 虚函数完成功能。
+
+使用 linux 中 sysfs pci_methods 方法时，scan 函数为 sysfs_scan 函数，其代码如下：
+
+```c
+static void sysfs_scan(struct pci_access *a)
+{
+  char dirname[1024];
+  DIR *dir;
+  struct dirent *entry;
+  int n;
+
+  n = snprintf(dirname, sizeof(dirname), "%s/devices", sysfs_name(a));
+  if (n < 0 || n >= (int) sizeof(dirname))
+    a->error("Directory name too long");
+  dir = opendir(dirname);
+  if (!dir)
+    a->error("Cannot open %s", dirname);
+  while ((entry = readdir(dir)))
+    {
+      struct pci_dev *d;
+      unsigned int dom, bus, dev, func;
+
+      /* ".", ".." or a special non-device perhaps */
+      if (entry->d_name[0] == '.')
+	continue;
+
+      d = pci_alloc_dev(a);
+      if (sscanf(entry->d_name, "%x:%x:%x.%d", &dom, &bus, &dev, &func) < 4)
+	a->error("sysfs_scan: Couldn't parse entry name %s", entry->d_name);
+
+      /* Ensure kernel provided domain that fits in a signed integer */
+      if (dom > 0x7fffffff)
+	a->error("sysfs_scan: Invalid domain %x", dom);
+
+      d->domain = dom;
+      d->bus = bus;
+      d->dev = dev;
+      d->func = func;
+      if (!a->buscentric)
+	{
+	  sysfs_get_resources(d);
+	  d->irq = sysfs_get_value(d, "irq", 1);
+	  /*
+	   *  We could read these faster from the config registers, but we want to give
+	   *  the kernel a chance to fix up ID's and especially classes of broken devices.
+	   */
+	  d->vendor_id = sysfs_get_value(d, "vendor", 1);
+	  d->device_id = sysfs_get_value(d, "device", 1);
+	  d->device_class = sysfs_get_value(d, "class", 1) >> 8;
+	  d->known_fields = PCI_FILL_IDENT | PCI_FILL_CLASS | PCI_FILL_IRQ | PCI_FILL_BASES | PCI_FILL_ROM_BASE | PCI_FILL_SIZES | PCI_FILL_IO_FLAGS;
+	}
+      pci_link_dev(a, d);
+    }
+  closedir(dir);
+}
+```
+此函数的主要流程为：
+
+1. 打开 /sys/bus/pci/devices/ 目录
+2. 遍历 /sys/bus/pci/devices 目录，调用 pci_alloc_dev 函数为每个扫描到的 pci 设备创建一个 pci_dev 结构，扫描子目录，解析后填充到 pci_dev 结构的不同字段中，最后调用 pci_link_dev 将当前 pci_dev 结构插到 pci_access 结构中 devices 链表的头部。
+
+上文已经说明了 pci_methods 结构体中的一些方法是 pci_dev 对象的方法，那自然 pci_dev 结构中也要关联到 pci_methods 方法上，pci_dev 结构中也有一个 methods 字段，在 pci_alloc_dev 的时候赋值为 pci_access 中的 methods 字段的值。
+
+pci_alloc_dev 函数代码如下：
+```c
+struct pci_dev *
+pci_alloc_dev(struct pci_access *a)
+{
+  struct pci_dev *d = pci_malloc(a, sizeof(struct pci_dev));
+
+  memset(d, 0, sizeof(*d));
+  d->access = a;
+  d->methods = a->methods;
+  d->hdrtype = -1;
+  d->numa_node = -1;
+  if (d->methods->init_dev)
+    d->methods->init_dev(d);
+  return d;
+}
+```
+此函数将 pci_dev 与 pci_access 关联起来，pci_dev 中的 access 变量指向 pci_access 结构，当 pci_dev 关联的 pci_methods 中的 init_dev 方法存在时调用之。
+
+pci 设备扫描完成后，通过 pci_access 结构中的 devices 指针就能够访问到所有的 pci_dev 结构。
+
+## 用户态程序调用 pciutils 提供的 pci 信息获取、设定 pci 接口信息
+
+example 程序中相关信息代码如下：
+
+```c
+  for (dev=pacc->devices; dev; dev=dev->next)	/* Iterate over all devices */
+    {
+      pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_CLASS);	/* Fill in header info we need */
+      c = pci_read_byte(dev, PCI_INTERRUPT_PIN);				/* Read config register directly */
+      printf("%04x:%02x:%02x.%d vendor=%04x device=%04x class=%04x irq=%d (pin %d) base0=%lx",
+	     dev->domain, dev->bus, dev->dev, dev->func, dev->vendor_id, dev->device_id,
+	     dev->device_class, dev->irq, c, (long) dev->base_addr[0]);
+
+      /* Look up and print the full name of the device */
+      name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
+      printf(" (%s)\n", name);
+    }
+```
+上述代码通过遍历扫描到的 pci 链表，获取到每个 pci_dev 结构，并调用 pci_fill_info、pci_read_byte、pci_lookup_name 函数来获取相关的信息，格式化后输出。
+
+pci_fill_info 与 pci_read_byte 通过调用绑定到当前 pci_dev 上的 pci_methods 中的 fill_info 与 read 函数实现，类似的函数可以在 lib/access.c 中找到。
+
+pci_lookup_name 函数通过 device id 与 vendor id 检索指定位置的数据库，获取到详细的设备描述信息。
+
+这个数据库有如下几个类别：
+1. 本地数据库
+2. 本地 cache 数据库
+3. udev hwdb 数据库
+4. 通过 DNS 来解析未知 ID
+
+每个 pci_access 结构中都有一个 id_hash，pci_lookup_name 会在 id_hash 没有初始化时先从本地载入数据库插入到 id_hash 结构中，其它的几个数据库也会在检索成功后插入到 id_hash 结构中。
+
+此后通过 hash 函数就能够快速的找到设备描述信息。在 linux 中，本地数据库的路径为 /usr/share/misc/pci.ids.gz、/usr/shard/misc/pci.ids，使用 strace 跟踪 example 程序就能够看到对这些文件的访问过程。
+
+## 总结
+pciutils 包通过抽象 pci_methods 结构并基于此接口封装上层接口屏蔽了底层平台的差异，达成了一套接口多平台支持的需求。
+
+pci_methods 结构是对另外两个对象——pci_access 与 pci_dev 对象的组合，这一组合简化了程序设计的过程。
+
+本文从 pciutils 的介绍入手逐步深入到 pciutils 的实现细节中，描述了 pciutils 中 libpci 库的主体框架，其它的细节留待以后继续探索！
+
