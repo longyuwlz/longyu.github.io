@@ -44,19 +44,19 @@
 
 主页截图：
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/733c33ba-ae53-4097-bcb4-819f28fac18e/Untitled.png)
+![主页](imgs/主页.png)
 
 dpdk 主题技术博客截图：
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/00b41973-897c-48a4-823d-cdbc481cbe0e/Untitled.png)
+![dpdk](imgs/dpdk.png)
 
 blog 页面截图：
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/110c2794-ec8b-4666-ad9e-0d7f785002d0/Untitled.png)
+![blog](imgs/blog.png)
 
 本地搜索功能截图：
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/721fef0c-1860-4883-a8fc-0ef1b1a9c8a1/Untitled.png)
+![search](imgs/search.png)
 
 ## 搭建过程遇到的几个使用问题
 
@@ -76,7 +76,7 @@ blog 页面截图：
 	apt install git make gcc g++ xz-utils
 ```
 
-1. nodejs 新版本安装
+2. nodejs 新版本安装
     
     访问 [https://nodejs.org/en/](https://nodejs.org/en/)，下载 node-v16.15.1 LTS 版本。下载链接如下：
     
@@ -88,8 +88,6 @@ blog 页面截图：
     NODEJS=/home/longyu/program/node-v16.15.1-linux-x64/bin
     export PATH=$NODEJS:$PATH
     ```
-    
-
 ### 项目 clone
 
 执行 git clone [https://github.com/longyuwlz/longyu.github.io.git](https://github.com/longyuwlz/longyu.github.io.git) 克隆我的 docusaurus 项目到本地，此时不能直接编译，需要先安装依赖的 node_modules。
