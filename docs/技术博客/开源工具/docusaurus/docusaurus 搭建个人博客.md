@@ -1,13 +1,5 @@
 # 使用 Docusaurus 与 github pages 快速上线个人博客站点
 
-#!/bin/bash
-
-export PATH=/home/longyu/program/node-v16.15.1-linux-x64/bin:$PATH
-export USE_SSH=true
-cd /home/longyu/longyu.github.io
-
-npm run deploy > ./deploy.log 2>&1
-
 ## 用 github pages 来做知识管理
 
 最近几年，我输出了大量的文章，主要包含技术博客与随笔。随着文章数目的快速增加，如何呈现、管理这些内容变得更具挑战性。
